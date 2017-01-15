@@ -189,7 +189,7 @@ class Sypex_Dumper {
 		}
 		else {
 			define('V_MYSQL', 0); 
-			$this->error = "sxd.actions.tab_connects();alert(" . sxd_esc(mysql_error()) . ");";
+			$this->error = "sxd.actions.tab_connects();alert(" . sxd_esc(mysqli_error()) . ");";
 		}	
 		$this->try = false;
 		return V_MYSQL ? true: false;
@@ -341,7 +341,7 @@ class Sypex_Dumper {
         	echo "sxd.clearOpt('db');sxd.addOpt(" . sxd_php2json(array('db' => $this->getDBList())) . ");sxd.combos.services_db.select(0,'-');";
 		}
         else
-        	echo "alert(" . sxd_esc(mysql_error()) . ");";
+        	echo "alert(" . sxd_esc(mysqli_error()) . ");";
 	}
 	function cfg2js($cfg){
 		foreach($cfg AS $k => $v){
@@ -553,7 +553,7 @@ class Sypex_Dumper {
 		}
 		mysqli_select_db($this->JOB['db']);
 		if(is_null($this->JOB['obj'])) $this->runRestoreJobForeign($continue);
-		//mysql_query("SET NAMES 'UTF8'");
+		//mysqli_query("SET NAMES 'UTF8'");
 		$types = array('VI' => 'View', 'PR' => 'Procedure', 'FU' => 'Function', 'TR' => 'Trigger', 'EV' => 'Event');
 		$fcache = '';
 		$writes = 0;
@@ -583,8 +583,8 @@ class Sypex_Dumper {
 		if(V_MYSQL > 40014) {
 			mysqli_query("SET UNIQUE_CHECKS=0");
 			mysqli_query("SET FOREIGN_KEY_CHECKS=0");
-			if(V_MYSQL > 40101) mysql_query("SET SQL_MODE='NO_AUTO_VALUE_ON_ZERO'");
-			if(V_MYSQL > 40111) mysql_query("SET SQL_NOTES=0");
+			if(V_MYSQL > 40101) mysqli_query("SET SQL_MODE='NO_AUTO_VALUE_ON_ZERO'");
+			if(V_MYSQL > 40111) mysqli_query("SET SQL_NOTES=0");
 		}
 		$log_sql = false;
 		$fields = '';
@@ -864,7 +864,7 @@ class Sypex_Dumper {
 				$this->rtl[1] = time();
 				fwrite($this->fh_rtl, implode("\t", $this->rtl));
 				error_log("-----------------\n{$q}\n", 3, "sql.log");
-				if(mysql_query($q)) {
+				if(mysqli_query($q)) {
 					if($insert) {
 						$c = 1;
 					}
@@ -1102,7 +1102,7 @@ class Sypex_Dumper {
 							}
 							for($k = 0; $k < $fields; $k++){
 								if(!isset($row[$k])) {$row[$k] = '\N';}
-								elseif($notNum[$k]) {$row[$k] =  '\'' . mysql_real_escape_string($row[$k]) . '\'';} // TODO: Потестить скорость эскэйпинга строк
+								elseif($notNum[$k]) {$row[$k] =  '\'' . mysqli_real_escape_string($row[$k]) . '\'';} // TODO: Потестить скорость эскэйпинга строк
 							}
 							$fcache .= '(' . implode(',', $row) . "),\n";
 							$this->rtl[7]++;  
@@ -1221,9 +1221,9 @@ class Sypex_Dumper {
 		}
 		if(V_MYSQL < 50000){
 			foreach($items AS $item){
-    			$tables = mysql_query("SHOW TABLES FROM `{$item}`") or sxd_my_error();
+    			$tables = mysqli_query("SHOW TABLES FROM `{$item}`") or sxd_my_error();
     			if ($tables) {
-    	  			$tabs = mysql_num_rows($tables);
+    	  			$tabs = mysqli_num_rows($tables);
     	  			$dbs[$item] = "{$item} ({$tabs})";
     	  		}
 			}
@@ -1298,7 +1298,7 @@ class Sypex_Dumper {
 				// TODO: To fix events and triggers check
 				for($i = 0, $l = count($shows); $i < $l; $i++){
 					$r = mysqli_query('SHOW ' . $shows[$i]);
-					if($r && mysql_num_rows($r) > 0) {
+					if($r && mysqli_num_rows($r) > 0) {
 						$col_name = $shows[$i] == 'TRIGGERS' ? 'Trigger' : 'Name';
 						$type = substr($shows[$i], 0, 2);
 						while($item = mysqli_fetch_assoc($r)){
@@ -1591,7 +1591,7 @@ function sxd_esc($str, $quoted = true){
 	return $quoted ? "'" . addcslashes($str, "\\\0\n\r\t\'") . "'" : addcslashes($str, "\\\0\n\r\t\'");
 }
 function sxd_my_error(){
-	trigger_error(mysql_error(), E_USER_ERROR);	
+	trigger_error(mysqli_error(), E_USER_ERROR);
 }
 function sxd_shutdown(){
 	global $SXD;
