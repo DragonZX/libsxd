@@ -1,8 +1,8 @@
 Installing
 
 1.Unzip it and upload the contents of the directory to the server.
-2.Set chmod 777 for ‘backup’ directory.
-3.Set chmod 666 for files ‘cfg.php’ and ‘ses.php’.
+2.Set chmod 777 for â€˜backupâ€™ directory.
+3.Set chmod 666 for files â€˜cfg.phpâ€™ and â€˜ses.phpâ€™.
 
 Using
 
