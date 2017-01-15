@@ -1,4 +1,1 @@
-<?php
-$SES = array (
-);
-?>
+<?php $SES = array (); ?>

@@ -182,10 +182,10 @@ class Sypex_Dumper {
 			$this->CFG['my_user'] = $user;
 			$this->CFG['my_pass'] = $pass;
 		}
-		if(mysql_connect($this->CFG['my_host'] . ($this->CFG['my_host']{0} != ':' ? ":{$this->CFG['my_port']}" : ''),  $this->CFG['my_user'], $this->CFG['my_pass'])) {
-			if(V_PHP > 50202) mysql_set_charset('utf8') or sxd_my_error();
-			else mysql_query('SET NAMES utf8') or sxd_my_error();
-			define('V_MYSQL', sxd_ver2int(mysql_get_server_info()));
+		if(mysqli_connect($this->CFG['my_host'] . ($this->CFG['my_host']{0} != ':' ? ":{$this->CFG['my_port']}" : ''),  $this->CFG['my_user'], $this->CFG['my_pass'])) {
+			if(V_PHP > 50202) mysqli_set_charset('utf8') or sxd_my_error();
+			else mysqli_query('SET NAMES utf8') or sxd_my_error();
+			define('V_MYSQL', sxd_ver2int(mysqli_get_server_info()));
 		}
 		else {
 			define('V_MYSQL', 0); 
@@ -336,7 +336,7 @@ class Sypex_Dumper {
 		return $JOB;
 	}
 	function deleteDB($name){
-		$r = mysql_query('DROP DATABASE `' . sxd_esc($name, false) . '`') or sxd_my_error();
+		$r = mysqli_query('DROP DATABASE `' . sxd_esc($name, false) . '`') or sxd_my_error();
 		if($r){
         	echo "sxd.clearOpt('db');sxd.addOpt(" . sxd_php2json(array('db' => $this->getDBList())) . ");sxd.combos.services_db.select(0,'-');";
 		}
@@ -350,7 +350,7 @@ class Sypex_Dumper {
 		return $cfg;
 	}
 	function addDb($req){
-        $r = mysql_query('CREATE DATABASE `' . sxd_esc($req['name'], false) . '`' . (V_MYSQL > 40100 ? "CHARACTER SET {$req['charset']} COLLATE {$req['collate']}" : ''));
+        $r = mysqli_query('CREATE DATABASE `' . sxd_esc($req['name'], false) . '`' . (V_MYSQL > 40100 ? "CHARACTER SET {$req['charset']} COLLATE {$req['collate']}" : ''));
         if($r)
         	echo "sxd.addOpt(" . sxd_php2json(array('db' => array($req['name'] => "{$req['name']} (0)"))) . ");";
         else
@@ -402,13 +402,13 @@ class Sypex_Dumper {
 		$serv = array('optimize' => 'OPTIMIZE', 'analyze' => 'ANALYZE', 'check' => 'CHECK', 'repair' => 'REPAIR');
 		$add = array('check'  => array('', 'QUICK', 'FAST', 'CHANGED', 'MEDIUM', 'EXTENDED'), 'repair' => array('', 'QUICK', 'EXTENDED'));
 		if(isset($serv[$job['type']])) {
-			mysql_select_db($job['db']);
+			mysqli_select_db($job['db']);
 			$filter = $object = array();
 			$this->createFilters($job['obj'], $filter, $object);
-			$r = mysql_query('SHOW TABLE STATUS') or sxd_my_error();
+			$r = mysqli_query('SHOW TABLE STATUS') or sxd_my_error();
 			if (!$r) return;
 			$tables = array();
-			while($item = mysql_fetch_assoc($r)){
+			while($item = mysqli_fetch_assoc($r)){
 				if(V_MYSQL > 40101 && is_null($item['Engine']) && preg_match('/^VIEW/i', $item['Comment'])) continue;
 				if(sxd_check($item['Name'], $object['TA'], $filter['TA'])) $tables[] = "`{$item['Name']}`";
 			}
@@ -418,10 +418,10 @@ class Sypex_Dumper {
 				$sql .= isset($add[$job['type']][$job[$job['type']]]) ? ' ' . $add[$job['type']][$job[$job['type']]] : '';
 			}
 			
-			$r = mysql_query($sql) or sxd_my_error();
+			$r = mysqli_query($sql) or sxd_my_error();
 			if (!$r) return;
 			$res = array();
-			while($item = mysql_fetch_row($r)){
+			while($item = mysqli_fetch_row($r)){
 				$res[] = $item;
 			}
 			echo 'sxd.result.add(' . sxd_php2json($res). ');';
@@ -471,7 +471,7 @@ class Sypex_Dumper {
 			$this->addLog($this->LNG['not_found_rtl']);
 			exit;
 		}
-		// TODO: проверить удаление кодировки
+		// TODO: Check codepage deletion
 		//$this->rtl[6] = '';
 		fseek($this->fh_rtl, 0);
 		$this->rtl[1] = time();
@@ -551,7 +551,7 @@ class Sypex_Dumper {
 			if(!empty($this->rtl[6])) $this->setNames($this->JOB['correct'] == 1 && !empty($this->JOB['charset']) ? $this->JOB['charset'] : $this->rtl[6]);
 			if($this->rtl[7] < $this->rtl[10]) $ei = true; 
 		}
-		mysql_select_db($this->JOB['db']);
+		mysqli_select_db($this->JOB['db']);
 		if(is_null($this->JOB['obj'])) $this->runRestoreJobForeign($continue);
 		//mysql_query("SET NAMES 'UTF8'");
 		$types = array('VI' => 'View', 'PR' => 'Procedure', 'FU' => 'Function', 'TR' => 'Trigger', 'EV' => 'Event');
@@ -573,16 +573,16 @@ class Sypex_Dumper {
 		}
 		$tab_exists = array();
 		if($this->JOB['strategy'] > 0){
-			$r = mysql_query("SHOW TABLES") or sxd_my_error();
-			while($item = mysql_fetch_row($r)){
+			$r = mysqli_query("SHOW TABLES") or sxd_my_error();
+			while($item = mysqli_fetch_row($r)){
 				$tab_exists[$item[0]] = true;
 			}
 		}
 		$insert = $continue && $this->rtl[7] < $this->rtl[10] ? "{$td} INTO `{$this->rtl[5]}` VALUES " : '';
 		//$enable_index = array();
 		if(V_MYSQL > 40014) {
-			mysql_query("SET UNIQUE_CHECKS=0");
-			mysql_query("SET FOREIGN_KEY_CHECKS=0");
+			mysqli_query("SET UNIQUE_CHECKS=0");
+			mysqli_query("SET FOREIGN_KEY_CHECKS=0");
 			if(V_MYSQL > 40101) mysql_query("SET SQL_MODE='NO_AUTO_VALUE_ON_ZERO'");
 			if(V_MYSQL > 40111) mysql_query("SET SQL_NOTES=0");
 		}
@@ -640,7 +640,7 @@ class Sypex_Dumper {
 							$q = substr_replace($q, $insert, 0, strlen($m[0]));
 						}
 						//mysql_query("LOCK TABLES `{$tab}` WRITE") or die (mysql_error());
-						mysql_query("ALTER TABLE `{$tab}` DISABLE KEYS") or sxd_my_error();
+						mysqli_query("ALTER TABLE `{$tab}` DISABLE KEYS") or sxd_my_error();
 						//if(!empty($this->JOB['autoinc'])) mysql_query("ALTER TABLE `{$tab}` AUTO_INCREMENT = 1") or sxd_my_error();
 						$ex = 1;
 					}
@@ -673,7 +673,7 @@ class Sypex_Dumper {
 							$this->rtl[5] = $m[2];
 							$ei = 0;
 							if($tc && ($this->JOB['strategy'] == 0 || isset($tab_exists[$m[2]]))) {
-								mysql_query("{$tc} `{$m[2]}`") or sxd_my_error();
+								mysqli_query("{$tc} `{$m[2]}`") or sxd_my_error();
 							}
 						}
 						elseif($m[1] == 'TD'){
@@ -684,7 +684,7 @@ class Sypex_Dumper {
 							$this->rtl[5] = $m[2];
 							$this->rtl[7] = 0;
 							$this->rtl[8] = 0;
-							mysql_query("DROP {$types[$m[1]]} IF EXISTS `{$m[2]}`") or sxd_my_error();
+							mysqli_query("DROP {$types[$m[1]]} IF EXISTS `{$m[2]}`") or sxd_my_error();
 							$this->addLog(sprintf($this->LNG["restore_{$m[1]}"], $m[2]));
 							$ei = 0;
 						}
@@ -700,7 +700,7 @@ class Sypex_Dumper {
 				fseek($this->fh_rtl, 0);
 				$this->rtl[1] = time();
 				fwrite($this->fh_rtl, implode("\t", $this->rtl));
-				if(mysql_query($q)) {
+				if(mysqli_query($q)) {
 					if($insert) {
 						$c = 1;
 					}
@@ -711,7 +711,7 @@ class Sypex_Dumper {
 				}
 				
 				if($c){
-					$i = mysql_affected_rows();
+					$i = mysqli_affected_rows();
 					$this->rtl[3] = ftell($this->fh_tmp) - $seek;
 					$this->rtl[7] += $i;
 					$this->rtl[10] += $i;
@@ -732,7 +732,7 @@ class Sypex_Dumper {
 		$this->rtl[8] = 0;
 		foreach($this->JOB['todo']['TA'] AS $tab){
 			if ($tab[0] == 'TC') continue;
-			mysql_query("ALTER TABLE `{$tab[1]}` ENABLE KEYS") or sxd_my_error();
+			mysqli_query("ALTER TABLE `{$tab[1]}` ENABLE KEYS") or sxd_my_error();
 			$this->rtl[1] = time();
 			$this->rtl[5] = $tab[1];
 			fseek($this->fh_rtl, 0);
@@ -875,7 +875,7 @@ class Sypex_Dumper {
 				}
 				
 				if($c){
-					$i = mysql_affected_rows();
+					$i = mysqli_affected_rows();
 					$this->rtl[3] = ftell($this->fh_tmp) - $seek;
 					$this->rtl[7] += $i;
 					$this->rtl[10] += $i;
@@ -903,7 +903,7 @@ class Sypex_Dumper {
 		$this->closeConnect();
 		// Создаем новое задание
 		$this->JOB = $job;
-		mysql_select_db($this->JOB['db']);
+		mysqli_select_db($this->JOB['db']);
 		// Создаем список объектов и фильтр
 		$filter = $object = array();
 		$this->createFilters($this->JOB['obj'], $filter, $object);
@@ -923,12 +923,12 @@ class Sypex_Dumper {
 			$t = $query[2];
 			if($t == 'TA' && (!empty($object['TC']) || !empty($filter['TC']))) {}
 			elseif(empty($object[$t]) && empty($filter[$t])) continue;
-			$r = mysql_query('SHOW ' . $query[0]) or sxd_my_error();
+			$r = mysqli_query('SHOW ' . $query[0]) or sxd_my_error();
 			if (!$r) continue;
 			$todo[$t] = array();
 			$header[$t] = array();
 			
-			while($item = mysql_fetch_assoc($r)){
+			while($item = mysqli_fetch_assoc($r)){
 				$n = $item[$query[1]];
 				switch($t){
 					case 'TA':
@@ -965,10 +965,10 @@ class Sypex_Dumper {
 		}
 		if (V_MYSQL > 50014 && (!empty($object['VI']) || !empty($filter['VI']))) {
 			// Бэкап обзоров, нужно отсортировать зависимые
-			$r = mysql_query("SELECT table_name, view_definition /*!50121 , collation_connection */ FROM INFORMATION_SCHEMA.VIEWS WHERE TABLE_SCHEMA = '{$this->JOB['db']}'") or sxd_my_error();
+			$r = mysqli_query("SELECT table_name, view_definition /*!50121 , collation_connection */ FROM INFORMATION_SCHEMA.VIEWS WHERE TABLE_SCHEMA = '{$this->JOB['db']}'") or sxd_my_error();
 			$views = $dumped = $views_collation = array();
 			$re = "/`{$this->JOB['db']}`.`(.+?)`/";
-			while($item = mysql_fetch_assoc($r)){
+			while($item = mysqli_fetch_assoc($r)){
 				preg_match_all($re, preg_replace("/^select.+? from/i", '', $item['view_definition']), $m);
 				$used = $m[1];	
 				$views_collation[$item['table_name']] = !empty($item['collation_connection']) ? $item['collation_connection'] : '';
@@ -1020,14 +1020,14 @@ class Sypex_Dumper {
 	function runBackupJob($continue = false){
 		if($continue){
 			$this->fh_tmp = $this->openFile($this->JOB['file_tmp'], 'a');
-			mysql_select_db($this->JOB['db']);
+			mysqli_select_db($this->JOB['db']);
 		}
-		mysql_query("SET SQL_QUOTE_SHOW_CREATE = 1");
+		mysqli_query("SET SQL_QUOTE_SHOW_CREATE = 1");
 		$types = array('VI' => 'View', 'PR' => 'Procedure', 'FU' => 'Function', 'TR' => 'Trigger', 'EV' => 'Event');
 		$fcache = '';
 		$writes = 0;
 		
-		if(V_MYSQL > 40101) mysql_query("SET SESSION character_set_results = '" . ($this->JOB['charset'] ? $this->JOB['charset'] : 'binary') ."'") or sxd_my_error();
+		if(V_MYSQL > 40101) mysqli_query("SET SESSION character_set_results = '" . ($this->JOB['charset'] ? $this->JOB['charset'] : 'binary') ."'") or sxd_my_error();
 		$time_old = time();
 		$exit_time = $time_old + $this->CFG['time_web'] - 1;
 		$no_cache = V_MYSQL < 40101 ? 'SQL_NO_CACHE ' : '';
@@ -1049,8 +1049,8 @@ class Sypex_Dumper {
 						$from = '';
 						if ($n[0] == 'TC' || $this->rtl[7] == 0){
 							// Бэкап структуры таблицы
-							$r = mysql_query("SHOW CREATE TABLE `{$n[1]}`") or sxd_my_error();
-							$item = mysql_fetch_assoc($r);
+							$r = mysqli_query("SHOW CREATE TABLE `{$n[1]}`") or sxd_my_error();
+							$item = mysqli_fetch_assoc($r);
 						    $fcache .= "#\tTC`{$n[1]}`{$n[2]}\t;\n{$item['Create Table']}\t;\n";
 						    $this->addLog(sprintf($this->LNG['backup_TC'], $n[1]));
 			            	$this->rtl[7] = 0; 
@@ -1064,9 +1064,9 @@ class Sypex_Dumper {
 						}
 						// Определяем типы полей
 						$notNum = array();
-						$r = mysql_query("SHOW COLUMNS FROM `{$n[1]}`") or sxd_my_error();
+						$r = mysqli_query("SHOW COLUMNS FROM `{$n[1]}`") or sxd_my_error();
 			            $fields = 0;
-			            while($col = mysql_fetch_array($r)) {
+			            while($col = mysqli_fetch_array($r)) {
 			            	// TODO: проверить типы SET, ENUM и BIT
             				$notNum[$fields] = preg_match("/^(tinyint|smallint|mediumint|bigint|int|float|double|real|decimal|numeric|year)/", $col['Type']) ? 0 : 1; 
             				$fields++;
@@ -1074,8 +1074,8 @@ class Sypex_Dumper {
 			            $time_old = time();
 			            $z = 0;
 			            // Достаем данные
-			            $r = mysql_unbuffered_query("SELECT {$no_cache}* FROM `{$n[1]}`{$from}");
-			            while($row = mysql_fetch_row($r)) {
+			            $r = mysqli_unbuffered_query("SELECT {$no_cache}* FROM `{$n[1]}`{$from}");
+			            while($row = mysqli_fetch_row($r)) {
 			            	 if (strlen($fcache) >= 61440) {
 			            	 	$z = 0;
 								if($time_old < time()) {
@@ -1109,21 +1109,21 @@ class Sypex_Dumper {
 							$this->rtl[10]++;
 						}
 						unset($row);
-						mysql_free_result($r);
+						mysqli_free_result($r);
 						$fcache = substr_replace($fcache, "\t;\n",  -2, 2);
 					break;
 
 					default:
 						if(V_MYSQL < 50121 && $n[0] == 'TR'){
 							// SHOW CREATE TRIGGER отсутствует до MySQL 5.1.21
-							$r = mysql_query("SELECT * FROM `INFORMATION_SCHEMA`.`TRIGGERS` WHERE `TRIGGER_SCHEMA` = '{$this->JOB['db']}' AND `TRIGGER_NAME` = '{$n[1]}'") or sxd_my_error();
-							$item = mysql_fetch_assoc($r);
+							$r = mysqli_query("SELECT * FROM `INFORMATION_SCHEMA`.`TRIGGERS` WHERE `TRIGGER_SCHEMA` = '{$this->JOB['db']}' AND `TRIGGER_NAME` = '{$n[1]}'") or sxd_my_error();
+							$item = mysqli_fetch_assoc($r);
 							$fcache .= "#\tTR`{$n[1]}`{$n[2]}\t;\nCREATE TRIGGER `{$item['TRIGGER_NAME']}` {$item['ACTION_TIMING']} {$item['EVENT_MANIPULATION']} ON `{$item['EVENT_OBJECT_TABLE']}` FOR EACH ROW {$item['ACTION_STATEMENT']}\t;\n";
 						}
 						else {
 							$this->addLog(sprintf($this->LNG['backup_' . $n[0]], $n[1]));
-							$r = mysql_query("SHOW CREATE {$types[$n[0]]} `{$n[1]}`") or sxd_my_error();
-							$item = mysql_fetch_assoc($r);
+							$r = mysqli_query("SHOW CREATE {$types[$n[0]]} `{$n[1]}`") or sxd_my_error();
+							$item = mysqli_fetch_assoc($r);
 							$fcache .= "#\t{$n[0]}`{$n[1]}`{$n[2]}\t;\n" . preg_replace("/DEFINER=`.+?`@`.+?` /", '', ($n[0] == 'TR' ? $item['SQL Original Statement'] : $item['Create ' . $types[$n[0]]])) . "\t;\n";
 						}
 				}
@@ -1184,7 +1184,7 @@ class Sypex_Dumper {
 	function setNames($collation){
 		if(empty($collation)) return;
 		if($this->rtl[6] != $collation) {
-			mysql_query('SET NAMES \'' . preg_replace('/^(\w+?)_/', '\\1\' COLLATE \'\\1_', $collation) . '\'') or sxd_my_error();
+			mysqli_query('SET NAMES \'' . preg_replace('/^(\w+?)_/', '\\1\' COLLATE \'\\1_', $collation) . '\'') or sxd_my_error();
 			/*if(!$this->rtl[7])*/ $this->addLog(sprintf($this->LNG['set_names'], $collation));
 			$this->rtl[6] = $collation;	
 		}
@@ -1212,8 +1212,8 @@ class Sypex_Dumper {
 			}
 		}
 		else{
-			$result = mysql_query("SHOW DATABASES") or sxd_my_error();
-    		while($item = mysql_fetch_row($result)){
+			$result = mysqli_query("SHOW DATABASES") or sxd_my_error();
+    		while($item = mysqli_fetch_row($result)){
     			if($item[0] == 'information_schema' || $item[0] == 'mysql' || $item[0] == 'performance_schema') continue;
     			$items[] = $qq . sxd_esc($item[0], false) . $qq;
     			$dbs[$item[0]] = "{$item[0]} (0)";
@@ -1230,8 +1230,8 @@ class Sypex_Dumper {
 		}
 		else {
 			$where = (count($items) > 0) ? 'WHERE `table_schema` IN (' . implode(',', $items) . ')' : '';
-			$result = mysql_query("SELECT `table_schema`, COUNT(*) FROM `information_schema`.`tables` {$where} GROUP BY `table_schema`") or sxd_my_error();
-			while($item = mysql_fetch_row($result)){
+			$result = mysqli_query("SELECT `table_schema`, COUNT(*) FROM `information_schema`.`tables` {$where} GROUP BY `table_schema`") or sxd_my_error();
+			while($item = mysqli_fetch_row($result)){
     			if($item[0] == 'information_schema' || $item[0] == 'mysql' || $item[0] == 'performance_schema') continue;
     			$dbs[$item[0]] = "{$item[0]} ({$item[1]})";
     		}
@@ -1246,9 +1246,9 @@ class Sypex_Dumper {
 			if(!empty($this->CFG['charsets'])){
 				$def_charsets = preg_match_all("/([\w*?]+)\s*/", $this->CFG['charsets'], $m, PREG_PATTERN_ORDER) ? '/^(' . str_replace(array('?','*'), array('.','\w+?'), implode('|', $m[1])) . ')$/i' : '';
 			}
-    		$r = mysql_query("SHOW CHARACTER SET") or sxd_my_error(); 
+    		$r = mysqli_query("SHOW CHARACTER SET") or sxd_my_error();
     		if ($r) {
-    			while($item = mysql_fetch_assoc($r)){
+    			while($item = mysqli_fetch_assoc($r)){
     	  			if (empty($def_charsets) || preg_match($def_charsets, $item['Charset'])) $tmp[$item['Charset']] = "{$item['Charset']}"; // ({$item['Description']})
     			}
 			}
@@ -1263,9 +1263,9 @@ class Sypex_Dumper {
 			if(!empty($this->CFG['charsets'])){
 				$def_charsets = preg_match_all("/([\w*?]+)\s*/", $this->CFG['charsets'], $m, PREG_PATTERN_ORDER) ? '/^(' . str_replace(array('?','*'), array('.','\w+?'), implode('|', $m[1])) . ')$/i' : '';
 			}
-    		$r = mysql_query("SHOW COLLATION") or sxd_my_error(); 
+    		$r = mysqli_query("SHOW COLLATION") or sxd_my_error();
     		if ($r) {
-    			while($item = mysql_fetch_assoc($r)){
+    			while($item = mysqli_fetch_assoc($r)){
     	  			if (empty($def_charsets) || preg_match($def_charsets, $item['Charset'])) $tmp[$item['Charset']][$item['Collation']] = $item['Default'] == 'Yes' ? 1 : 0; 
     			}
 			}
@@ -1273,13 +1273,13 @@ class Sypex_Dumper {
 	    return $tmp;
 	}
 	function getObjects($tree, $db_name){
-		mysql_select_db($db_name);
+		mysqli_select_db($db_name);
 		// Достаем таблицы
-		$r = mysql_query('SHOW TABLE STATUS');
+		$r = mysqli_query('SHOW TABLE STATUS');
 		$tab_prefix_last = $tab_prefix = '*';
 		$objects = array('TA' => array(), 'VI' => array(), 'PR' => array(), 'FU' => array(), 'TR' => array(), 'EV' => array());
 		if($r){
-			while($item = mysql_fetch_assoc($r)){
+			while($item = mysqli_fetch_assoc($r)){
 				if(V_MYSQL > 40101 && is_null($item['Engine']) && preg_match('/^VIEW/i', $item['Comment'])) {
 					$objects['VI'][]= $item['Name'];
 				}
@@ -1295,13 +1295,13 @@ class Sypex_Dumper {
 					'TRIGGERS'
 				);
 				if(V_MYSQL > 50100) $shows[] = "EVENTS WHERE db='{$db_name}'";
-				// TODO: Поправить проверку событий и триггеров
+				// TODO: To fix events and triggers check
 				for($i = 0, $l = count($shows); $i < $l; $i++){
-					$r = mysql_query('SHOW ' . $shows[$i]);
+					$r = mysqli_query('SHOW ' . $shows[$i]);
 					if($r && mysql_num_rows($r) > 0) {
 						$col_name = $shows[$i] == 'TRIGGERS' ? 'Trigger' : 'Name';
 						$type = substr($shows[$i], 0, 2);
-						while($item = mysql_fetch_assoc($r)){
+						while($item = mysqli_fetch_assoc($r)){
 							$objects[$type][] = $item[$col_name];	
 						}
 					}
